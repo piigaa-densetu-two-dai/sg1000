@@ -10,7 +10,7 @@ typedef struct {
 	uint8_t org;
 	uint8_t mod;
 	uint16_t addr;
-} patch_t;
+} __attribute__((packed)) patch_t;
 
 static uint8_t get_patch(FILE *fp, patch_t *patch)
 {
@@ -50,8 +50,8 @@ int main(int argc, char *argv[])
 	uint8_t rom[1024 * 48];
 	struct stat st;
 	FILE *fp;
+	uint8_t cnt, i;
 	patch_t patch[256];
-	int cnt, i;
 
 	if (argc != 3) {
 		fprintf(stderr, "～ ピーガー伝説のSG1000 ～\n");
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	if (st.st_size > (1024 * 32)) {
-		printf("サイズオーバーですぞ\n");
+		fprintf(stderr, "サイズオーバーですぞ\n");
 		return 1;
 	}
 	if (!(fp = fopen(argv[1], "rb"))) {
@@ -97,12 +97,12 @@ int main(int argc, char *argv[])
 			rom[patch[i].addr - 0x1000] = patch[i].mod;
 		}
 		/* ローダー追加 */
-		memcpy(&rom[0x8000], loader_bin, sizeof(loader_bin));
+		memcpy(&rom[0x8000], loader_rom, sizeof(loader_rom));
 		break;
 	}
 	fclose(fp);
 	if (cnt == 0) {
-		printf("パッチがありません。。。\n");
+		fprintf(stderr, "パッチがありません。。。\n");
 		return 1;
 	}
 
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 	}
 	fclose(fp);
 
-	printf("変換完了\n");
+	fprintf(stderr, "変換完了\n");
 
 	return 0;
 }
