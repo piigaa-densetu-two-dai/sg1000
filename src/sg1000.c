@@ -65,8 +65,8 @@ int main(int argc, char *argv[])
 		perror(argv[0]);
 		return 1;
 	}
-	if (st.st_size > (1024 * 32)) {
-		fprintf(stderr, "サイズオーバーですぞ\n");
+	if (st.st_size > (1024 * 40)) {
+		fprintf(stderr, "%s: サイズオーバーですぞ\n", argv[1]);
 		return 1;
 	}
 	if (!(fp = fopen(argv[1], "rb"))) {
@@ -97,12 +97,14 @@ int main(int argc, char *argv[])
 			rom[patch[i].addr - 0x1000] = patch[i].mod;
 		}
 		/* ローダー追加 */
+		memmove(&rom[0x8200], &rom[0x8000], 0x2000);
+		memset(&rom[0x8000], 0xff , 0x0200);
 		memcpy(&rom[0x8000], loader_rom, sizeof(loader_rom));
 		break;
 	}
 	fclose(fp);
 	if (cnt == 0) {
-		fprintf(stderr, "パッチがありません。。。\n");
+		fprintf(stderr, "%s: 対応パッチがありません。。。\n", argv[1]);
 		return 1;
 	}
 
@@ -115,7 +117,7 @@ int main(int argc, char *argv[])
 	}
 	fclose(fp);
 
-	fprintf(stderr, "変換完了\n");
+	fprintf(stderr, "%s: 変換完了\n", argv[1]);
 
 	return 0;
 }
