@@ -78,6 +78,9 @@ int main(int argc, char *argv[])
 	}
 	fclose(fp);
 
+	/* VDPパッチ */
+	patch_vdp(rom, sizeof(rom));
+
 	if (!(fp = fopen("SG1000.DAT", "rb"))) {
 		perror(argv[0]);
 		return 1;
@@ -91,8 +94,7 @@ int main(int argc, char *argv[])
 		if (i != cnt) { /* 適合しない */
 			continue;
 		}
-		/* パッチ */
-		patch_vdp(rom, sizeof(rom));
+		/* 個別パッチ */
 		for (i = 0 ; i < cnt ; i++) {
 			rom[patch[i].addr - 0x1000] = patch[i].mod;
 		}
