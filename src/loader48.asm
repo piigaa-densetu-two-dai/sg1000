@@ -1,21 +1,13 @@
 TMP	equ	0xc200
 RAM	equ	0xc201
 
-	org	0xc000
+	org	0x8000
 
 top:
 	; ROMヘッダ
 	.db #0x41, #0x42, #0x10, #0x80, #0x00, #0x00, #0x00, #0x00
 	.db #0x00, #0x00, #0x00, #0x00, #0x00, #0x00, #0x00, #0x00
 
-	; このコードをページ3にコピーして実行
-	ld	hl, #0x8000
-	ld	de, #0xc000
-	ld	bc, end - top
-	ldir
-	jp	start
-
-start:
 	; 音声ミュート
 	ld	a, #0x9f
 	out	(0x7f), a
@@ -78,11 +70,11 @@ break:
 out:
 	ld	(RAM), a
 
-	; RAMにコピー
+	; このコードを裏RAMにコピー
 	ld      hl, #0x8000
-	ld      de, #0x8200
-	ld      bc, #0x2000
-copy:
+	ld      de, #0x8000
+	ld      bc, end - top
+copy1:
 	push	hl
 	push	de
 	push	bc
@@ -98,8 +90,68 @@ copy:
 	dec	bc
 	ld	a, b
 	or	c
-	jr	nz, copy
+	jr	nz, copy1
 
+	; ページ2をRAMに、ページ3をこのROMに設定
+	in	a, (0xa8)
+	ld	(TMP), a
+	ld	a, (RAM)
+	ld	h, #0b10000000
+	call	0x24
+	ld	a, (TMP)
+	ld	b, a
+	and	#0b00110000
+	rlca
+	rlca
+	ld	c, a
+	in	a, (0xa8)
+	and	#0x3f
+	or	a, c
+	out	(0xA8), a
+	ld	a, b
+
+	; ROMの0xc000-0xc1ffをRAMの0xbe00-0xbfffにコピー
+	ld	hl, #0xc000
+	ld	de, #0xbe00
+	ld	bc, #0x0200
+	ldir
+
+	; スロットを元に戻す
+	out	(0xA8), a
+
+	; このコードをページ3にコピー
+	ld	hl, #0x8000
+	ld	de, #0xc000
+	ld	bc, end - top
+	ldir
+
+	; ページ3のコードへ
+	jp	page3 + 0x4000
+
+page3:	; ページ3上で行なう処理
+	; ROMの0x8200-0xbfffをRAMの0x8000-0xbdffにコピー
+	ld      de, #0x8200
+	ld      hl, #0x8000
+	ld      bc, #0x3e00
+copy2:
+	push	hl
+	push	de
+	push	bc
+	ld	a, (de)
+	ld	e, a
+	ld	a, (RAM)
+	call	0x14
+	pop	bc
+	pop	de
+	pop	hl
+	inc	hl
+	inc	de
+	dec	bc
+	ld	a, b
+	or	c
+	jr	nz, copy2
+
+start:
 	; ページ0,1をこのROMに、ページ2をRAMに設定
 	in	a, (0xa8)
 	ld	(TMP), a
@@ -130,7 +182,7 @@ copy:
 	out	(0xa0), a	; Set register 14 as accessible
 
 	; ジョイスティック関数を0xf420に配置
-	ld	hl, joypad1
+	ld	hl, joypad1 + 0x4000
 	ld	de, #0xf420
 	ld	bc, end - joypad1
 	ldir

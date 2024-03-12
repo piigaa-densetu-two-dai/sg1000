@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 
 #include "loader.h"
+#include "loader48.h"
 
 typedef struct {
 	uint8_t org;
@@ -47,7 +48,7 @@ static void patch_vdp(uint8_t *rom, uint32_t size)
 
 int main(int argc, char *argv[])
 {
-	uint8_t rom[1024 * 48];
+	uint8_t rom[1024 * 56];
 	struct stat st;
 	FILE *fp;
 	uint8_t cnt, i;
@@ -65,7 +66,7 @@ int main(int argc, char *argv[])
 		perror(argv[0]);
 		return 1;
 	}
-	if (st.st_size > (1024 * 40)) {
+	if (st.st_size > (1024 * 48)) {
 		fprintf(stderr, "%s: サイズオーバーですぞ\n", argv[1]);
 		return 1;
 	}
@@ -99,9 +100,13 @@ int main(int argc, char *argv[])
 			rom[patch[i].addr - 0x1000] = patch[i].mod;
 		}
 		/* ローダー追加 */
-		memmove(&rom[0x8200], &rom[0x8000], 0x2000);
+		memmove(&rom[0x8200], &rom[0x8000], 0x4000);
 		memset(&rom[0x8000], 0xff , 0x0200);
-		memcpy(&rom[0x8000], loader_rom, sizeof(loader_rom));
+		if (st.st_size > (1024 * 40)) {
+			memcpy(&rom[0x8000], loader48_rom, sizeof(loader48_rom));
+		} else {
+			memcpy(&rom[0x8000], loader_rom, sizeof(loader_rom));
+		}
 		break;
 	}
 	fclose(fp);
@@ -115,6 +120,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	if (fwrite(rom, 1, sizeof(rom), fp) != sizeof(rom)) {
+		perror(argv[0]);
 		return 1;
 	}
 	fclose(fp);
