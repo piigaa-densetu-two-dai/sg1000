@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	memset(rom, 0xff, sizeof(rom));
+	memset(rom, 0x00, sizeof(rom));
 
 	if (stat(argv[1], &st)) {
 		perror(argv[0]);
