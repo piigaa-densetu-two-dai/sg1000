@@ -1184,10 +1184,10 @@ SanNinMahjong40:
 	db	0DCh,0A2h,05Eh,074h
 
 SerizawaTsumeshogi:	;Serizawa Hachidan no Tsumeshogi
-	db	9
+	db	12
 	db	07Fh,PSGo,0B0h,018h, 07Fh,PSGo,0B4h,018h, 07Fh,PSGo,0B8h,018h, 07Fh,PSGo,0CEh,018h
 	db	07Fh,PSGo,0D4h,018h, 07Fh,PSGo,0D8h,018h, 07Fh,PSGo,0DCh,018h, 07Fh,PSGo,0E0h,018h
-	db	0DCh,0A2h,04Fh,01Ch
+	db	047h,0C3h,0FCh,01Bh, 0C5h,023h,0FDh,01Bh, 0D5h,00Ch,0FEh,01Bh, 0DCh,0A2h,04Fh,01Ch
 
 Sindbad:
 	db	124
