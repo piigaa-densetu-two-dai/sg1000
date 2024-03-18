@@ -4,7 +4,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "loader.h"
+#include "loader32.h"
+#include "loader40.h"
 #include "loader48.h"
 
 typedef struct {
@@ -53,6 +54,7 @@ int main(int argc, char *argv[])
 	FILE *fp;
 	uint8_t cnt, i;
 	patch_t patch[256];
+	uint16_t romsize;
 
 	if (argc != 3) {
 		fprintf(stderr, "～ ピーガー伝説のSG1000 ～\n");
@@ -102,10 +104,15 @@ int main(int argc, char *argv[])
 		/* ローダー追加 */
 		memmove(&rom[0x8200], &rom[0x8000], 0x4000);
 		memset(&rom[0x8000], 0xff , 0x0200);
-		if (st.st_size > (1024 * 40)) {
-			memcpy(&rom[0x8000], loader48_rom, sizeof(loader48_rom));
+		if (st.st_size <= (1024 * 32)) {
+			memcpy(&rom[0x8000], loader32_rom, sizeof(loader32_rom));
+			romsize = 0x8200;
+		} else if (st.st_size <= (1024 * 40)) {
+			memcpy(&rom[0x8000], loader40_rom, sizeof(loader40_rom));
+			romsize = 0xa200;
 		} else {
-			memcpy(&rom[0x8000], loader_rom, sizeof(loader_rom));
+			memcpy(&rom[0x8000], loader48_rom, sizeof(loader48_rom));
+			romsize = 0xc200;
 		}
 		break;
 	}
@@ -119,7 +126,7 @@ int main(int argc, char *argv[])
 		perror(argv[0]);
 		return 1;
 	}
-	if (fwrite(rom, 1, sizeof(rom), fp) != sizeof(rom)) {
+	if (fwrite(rom, 1, romsize, fp) != romsize) {
 		perror(argv[0]);
 		return 1;
 	}
