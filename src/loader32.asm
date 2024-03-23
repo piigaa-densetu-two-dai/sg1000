@@ -13,25 +13,9 @@ top:
 	ld	de, #0xc000
 	ld	bc, end - top
 	ldir
-	jp	start
+	jp	init
 
-start:
-	; 音声ミュート
-	ld	a, #0x9f
-	out	(0x7f), a
-	ld	a, #0xbf
-	out	(0x7f), a
-	ld	a, #0xdf
-	out	(0x7f), a
-	ld	a, #0xff
-	out	(0x7f), a
-
-	; 画面設定
-	ld	a, #0x00
-	ld	(0xf3ea), a
-	ld	(0xf3eb), a
-	ld	a, #0x01
-	call	0x005f
+#include "init.asm"
 
 	; ページ2のRAMを検索
 	ld	a, #0x00

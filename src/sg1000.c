@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
+#include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
 #include "loader32.h"
 #include "loader40.h"
 #include "loader48.h"
+#include "SG1000.DAT.h"
 
 typedef struct {
 	uint8_t org;
@@ -14,16 +17,19 @@ typedef struct {
 	uint16_t addr;
 } __attribute__((packed)) patch_t;
 
-static uint8_t get_patch(FILE *fp, patch_t *patch)
+static uint8_t get_patch(patch_t *patch)
 {
 	uint8_t cnt;
+	static const uint8_t *ptr;
 
-	if (fread(&cnt, 1, 1, fp) != 1) {
+	if (!patch) {
+		ptr = SG1000_DAT;
 		return 0;
 	}
-	if (fread(patch, 4, cnt, fp) != cnt) {
-		return 0;
-	}
+	cnt = *ptr++;
+	memcpy(patch, ptr, 4 * cnt);
+	ptr += (4 * cnt);
+
 	return cnt;
 }
 
@@ -47,7 +53,7 @@ static void patch_vdp(uint8_t *rom, uint32_t size)
 	}
 }
 
-int main(int argc, char *argv[])
+static int conv(const char *src, const char *dst)
 {
 	uint8_t rom[1024 * 56];
 	struct stat st;
@@ -56,27 +62,21 @@ int main(int argc, char *argv[])
 	patch_t patch[256];
 	uint16_t romsize;
 
-	if (argc != 3) {
-		fprintf(stderr, "～ ピーガー伝説のSG1000 ～\n");
-		fprintf(stderr, "使い方: %s <SGファイル> <ROMファイル>\n", argv[0]);
-		return 1;
-	}
-
 	memset(rom, 0x00, sizeof(rom));
 
-	if (stat(argv[1], &st)) {
-		perror(argv[0]);
+	if (stat(src, &st)) {
+		perror(src);
 		return 1;
 	}
 	if (st.st_size > (1024 * 48)) {
-		fprintf(stderr, "%s: サイズオーバーですぞ\n", argv[1]);
+		fprintf(stderr, "%s: サイズオーバーですぞ\n", src);
 		return 1;
 	}
-	if (!(fp = fopen(argv[1], "rb"))) {
-		perror(argv[0]);
+	if (!(fp = fopen(src, "rb"))) {
+		perror(src);
 		return 1;
 	}
-	if (fread(rom, 1, sizeof(rom), fp) == 0) {
+	if (fread(rom, 1, st.st_size, fp) != st.st_size) {
 		return 1;
 	}
 	fclose(fp);
@@ -84,11 +84,8 @@ int main(int argc, char *argv[])
 	/* VDPパッチ */
 	patch_vdp(rom, sizeof(rom));
 
-	if (!(fp = fopen("SG1000.DAT", "rb"))) {
-		perror(argv[0]);
-		return 1;
-	}
-	while ((cnt = get_patch(fp, patch))) {
+	get_patch(NULL);
+	while ((cnt = get_patch(patch))) {
 		for (i = 0 ; i < cnt ; i++) { /* パッチが適合するかを確認 */
 			if (rom[patch[i].addr - 0x1000] != patch[i].org) {
 				break;
@@ -116,23 +113,71 @@ int main(int argc, char *argv[])
 		}
 		break;
 	}
-	fclose(fp);
 	if (cnt == 0) {
-		fprintf(stderr, "%s: 対応パッチがありません。。。\n", argv[1]);
+		fprintf(stderr, "%s: 対応パッチがありません。。。\n", src);
 		return 1;
 	}
 
-	if (!(fp = fopen(argv[2], "wb"))) {
-		perror(argv[0]);
+	if (!(fp = fopen(dst, "wb"))) {
+		perror(dst);
 		return 1;
 	}
 	if (fwrite(rom, 1, romsize, fp) != romsize) {
-		perror(argv[0]);
+		perror(dst);
 		return 1;
 	}
 	fclose(fp);
 
-	fprintf(stderr, "%s: 変換完了\n", argv[1]);
+	fprintf(stderr, "%s: 変換完了\n", src);
+
+	return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	DIR *dir;
+	struct dirent *ent;
+	struct stat st;
+	char name[1024]; /* 最大長+8あれば大丈夫 */
+	char *ptr;
+
+	if ((argc != 2) && (argc != 3)) {
+		fprintf(stderr, "～ ピーガー伝説のSG1000 ～\n");
+		fprintf(stderr, "使い方\n");
+		fprintf(stderr, "	%s <SGファイル> <ROMファイル>\n", argv[0]);
+		fprintf(stderr, "	%s <ディレクトリ>\n", argv[0]);
+		return 1;
+	}
+
+	if (argc == 3) {
+		return conv(argv[1], argv[2]);
+	}
+
+	if (chdir(argv[1])) {
+		perror(argv[1]);
+		return 1;
+	}
+	if (!(dir = opendir("."))) {
+		perror(argv[1]);
+		return 1;
+	}
+	while ((ent = readdir(dir))) {
+		if (stat(ent->d_name, &st)) {
+			continue;
+		}
+		if (!S_ISREG(st.st_mode)) {
+			continue;
+		}
+		strcpy(name, ent->d_name);
+		if (!(ptr = strrchr(name, '.'))) {
+			continue;
+		}
+		if (!strcasecmp(ptr, ".bin") || !strcasecmp(ptr, ".sg")) {
+			strcpy(ptr, ".normal.rom");
+			conv(ent->d_name, name);
+		}
+	}
+	closedir(dir);
 
 	return 0;
 }
