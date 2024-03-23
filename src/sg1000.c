@@ -11,6 +11,9 @@
 #include "loader48.h"
 #include "SG1000.DAT.h"
 
+#define VDP0 0x98 /* VDPポート0 */
+#define VDP1 0x99 /* VDPポート1 */
+
 typedef struct {
 	uint8_t org;
 	uint8_t mod;
@@ -19,7 +22,7 @@ typedef struct {
 
 static uint8_t get_patch(patch_t *patch)
 {
-	uint8_t cnt;
+	uint8_t cnt, i;
 	static const uint8_t *ptr;
 
 	if (!patch) {
@@ -30,6 +33,21 @@ static uint8_t get_patch(patch_t *patch)
 	memcpy(patch, ptr, 4 * cnt);
 	ptr += (4 * cnt);
 
+	for (i = 0 ; i < cnt ; i++) {
+		if ((patch[i].org == 0xbe) && (patch[i].mod == 0x98)) {
+			patch[i].mod = VDP0;
+		}
+		if ((patch[i].org == 0xbf) && (patch[i].mod == 0x99)) {
+			patch[i].mod = VDP1;
+		}
+		if ((patch[i].org == 0x98) && (patch[i].mod == 0xbe)) {
+			patch[i].org = VDP0;
+		}
+		if ((patch[i].org == 0x99) && (patch[i].mod == 0xbf)) {
+			patch[i].org = VDP1;
+		}
+	}
+
 	return cnt;
 }
 
@@ -39,16 +57,16 @@ static void patch_vdp(uint8_t *rom, uint32_t size)
 	/* mingwにはmemmem()が無い模様 */
 	for (i = 0 ; i < (size - 1) ; i++) {
 		if ((rom[i] == 0xdb) && (rom[i + 1] == 0xbe)) { /* IN 0xbe */
-			rom[i + 1] = 0x98;
+			rom[i + 1] = VDP0;
 		}
 		if ((rom[i] == 0xd3) && (rom[i + 1] == 0xbe)) { /* OUT 0xbe */
-			rom[i + 1] = 0x98;
+			rom[i + 1] = VDP0;
 		}
 		if ((rom[i] == 0xdb) && (rom[i + 1] == 0xbf)) { /* IN 0xbf */
-			rom[i + 1] = 0x99;
+			rom[i + 1] = VDP1;
 		}
 		if ((rom[i] == 0xd3) && (rom[i + 1] == 0xbf)) { /* OUT 0xbf */
-			rom[i + 1] = 0x99;
+			rom[i + 1] = VDP1;
 		}
 	}
 }

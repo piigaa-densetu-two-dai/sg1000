@@ -120,6 +120,8 @@ copy:
 	ldir
 
 	; ロム起動
+	di
+	im	0
 	ld	sp, #0xfffe
 	rst	0
 
